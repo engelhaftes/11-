@@ -1,0 +1,115 @@
+-- Создание таблиц
+
+CREATE TABLE Restaurants (
+    RestaurantID INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(150) NOT NULL,
+    Address NVARCHAR(200),
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Dishes (
+    DishID INT IDENTITY(1,1) PRIMARY KEY,
+    RestaurantID INT NOT NULL,
+    Name NVARCHAR(150) NOT NULL,
+    Description NVARCHAR(500),
+    Price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (RestaurantID) REFERENCES Restaurants(RestaurantID)
+);
+
+CREATE TABLE Clients (
+    ClientID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Phone NVARCHAR(20),
+    Email NVARCHAR(100) UNIQUE
+);
+
+CREATE TABLE Couriers (
+    CourierID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Orders (
+    OrderID INT IDENTITY(1,1) PRIMARY KEY,
+    ClientID INT NOT NULL,
+    CourierID INT NULL,
+    OrderDate DATETIME DEFAULT GETDATE(),
+    Status NVARCHAR(50) DEFAULT 'New',
+    TotalAmount DECIMAL(10,2),
+    FOREIGN KEY (ClientID) REFERENCES Clients(ClientID),
+    FOREIGN KEY (CourierID) REFERENCES Couriers(CourierID)
+);
+
+CREATE TABLE OrderDetails (
+    OrderDetailID INT IDENTITY(1,1) PRIMARY KEY,
+    OrderID INT NOT NULL,
+    DishID INT NOT NULL,
+    Quantity INT NOT NULL,
+    UnitPrice DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
+    FOREIGN KEY (DishID) REFERENCES Dishes(DishID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Restaurants (Name, Address, Phone) VALUES
+('Пицца Хат', 'ул. Ленина, д.10', '+7-901-111-2222'),
+('Суши Вкус', 'пр. Мира, д. 32', '+7-923-333-4444');
+
+INSERT INTO Dishes (RestaurantID, Name, Description, Price) VALUES
+(1, 'Пепперони пицца', 'Острая пицца с пепперони', 500.00),
+(1, 'Маргарита', 'Пицца с томатами и сыром', 450.00),
+(2, 'Суши набор', 'Ассорти из суши', 700.00),
+(2, 'Роллы с лососем', 'Роллы с свежим лососем', 650.00);
+
+INSERT INTO Clients (FirstName, LastName, Phone, Email) VALUES
+('Игорь', 'Соколов', '+7-905-123-4567', 'igor.sokolov@mail.com'),
+('Ольга', 'Морозова', '+7-926-987-6543', 'olga.morozova@mail.com');
+
+INSERT INTO Couriers (FirstName, LastName, Phone) VALUES
+('Максим', 'Кузнецов', '+7-901-555-6666'),
+('Елена', 'Васильева', '+7-923-777-8888');
+
+INSERT INTO Orders (ClientID, CourierID, OrderDate, Status, TotalAmount) VALUES
+(1, 1, '2024-09-20 18:00', 'Delivered', 950.00),
+(2, 2, '2024-09-21 19:30', 'In Progress', 700.00);
+
+INSERT INTO OrderDetails (OrderID, DishID, Quantity, UnitPrice) VALUES
+(1, 1, 1, 500.00),
+(1, 2, 1, 450.00),
+(2, 3, 1, 700.00);
+
+-- Примеры запросов с JOIN
+
+-- 1. Блюда с информацией о ресторанах
+SELECT d.Name AS DishName, d.Description, d.Price, r.Name AS RestaurantName, r.Address
+FROM Dishes d
+INNER JOIN Restaurants r ON d.RestaurantID = r.RestaurantID;
+
+-- 2. Заказы с клиентами и курьерами
+SELECT o.OrderID, c.FirstName + ' ' + c.LastName AS ClientName, cr.FirstName + ' ' + cr.LastName AS CourierName,
+       o.OrderDate, o.Status, o.TotalAmount
+FROM Orders o
+INNER JOIN Clients c ON o.ClientID = c.ClientID
+LEFT JOIN Couriers cr ON o.CourierID = cr.CourierID;
+
+-- 3. Детали заказов с блюдами
+SELECT od.OrderDetailID, o.OrderID, d.Name AS DishName, od.Quantity, od.UnitPrice,
+       od.Quantity * od.UnitPrice AS LineTotal
+FROM OrderDetails od
+INNER JOIN Orders o ON od.OrderID = o.OrderID
+INNER JOIN Dishes d ON od.DishID = d.DishID;
+
+--4. Рестораны и количество блюд (LEFT JOIN)
+SELECT r.Name AS RestaurantName, COUNT(d.DishID) AS DishesCount
+FROM Restaurants r
+LEFT JOIN Dishes d ON r.RestaurantID = d.RestaurantID
+GROUP BY r.RestaurantID, r.Name;
+
+-- 5. Клиенты и их заказы (LEFT JOIN)
+SELECT c.FirstName + ' ' + c.LastName AS ClientName, o.OrderID, o.OrderDate, o.Status, o.TotalAmount
+FROM Clients c
+LEFT JOIN Orders o ON c.ClientID = o.ClientID
+ORDER BY c.LastName;
