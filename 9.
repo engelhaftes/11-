@@ -1,0 +1,82 @@
+-- Создание таблиц
+
+CREATE TABLE Authors (
+    AuthorID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Bio NVARCHAR(500)
+);
+
+CREATE TABLE Editors (
+    EditorID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50),
+    Position NVARCHAR(100)
+);
+
+CREATE TABLE Sections (
+    SectionID INT IDENTITY(1,1) PRIMARY KEY,
+    SectionName NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(300)
+);
+
+CREATE TABLE Issues (
+    IssueID INT IDENTITY(1,1) PRIMARY KEY,
+    IssueNumber NVARCHAR(50) NOT NULL,
+    IssueDate DATE NOT NULL
+);
+
+CREATE TABLE Articles (
+    ArticleID INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(200) NOT NULL,
+    AuthorID INT NOT NULL,
+    EditorID INT,
+    IssueID INT NOT NULL,
+    SectionID INT NOT NULL,
+    Content NVARCHAR(MAX),
+    FOREIGN KEY (AuthorID) REFERENCES Authors(AuthorID),
+    FOREIGN KEY (EditorID) REFERENCES Editors(EditorID),
+    FOREIGN KEY (IssueID) REFERENCES Issues(IssueID),
+    FOREIGN KEY (SectionID) REFERENCES Sections(SectionID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Authors (FirstName, LastName, Bio) VALUES
+('Иван', 'Иванов', 'Автор статей о технологиях'),
+('Мария', 'Петрова', 'Журналистка и обозреватель');
+
+INSERT INTO Editors (FirstName, LastName, Position) VALUES
+('Алексей', 'Смирнов', 'Главный редактор'),
+('Елена', 'Козлова', 'Редактор отдела культуры');
+
+INSERT INTO Sections (SectionName, Description) VALUES
+('Технологии', 'Новости и обзоры в сфере технологий'),
+('Культура', 'Статьи о культурных событиях');
+
+INSERT INTO Issues (IssueNumber, IssueDate) VALUES
+('№1 (2024)', '2024-01-10'),
+('№2 (2024)', '2024-02-10');
+
+INSERT INTO Articles (Title, AuthorID, EditorID, IssueID, SectionID, Content) VALUES
+('Новейшие технологии 2024', 1, 1, 1, 1, 'Текст статьи о технологиях...'),
+('Выставка современного искусства', 2, 2, 2, 2, 'Обзор выставки...');
+
+-- Примеры запросов с JOIN
+
+-- 1. Статьи с авторами, редакторами, номерами и рубриками
+SELECT a.Title, au.FirstName + ' ' + au.LastName AS Author, 
+       ed.FirstName + ' ' + ed.LastName AS Editor, 
+       i.IssueNumber, s.SectionName
+FROM Articles a
+INNER JOIN Authors au ON a.AuthorID = au.AuthorID
+LEFT JOIN Editors ed ON a.EditorID = ed.EditorID
+INNER JOIN Issues i ON a.IssueID = i.IssueID
+INNER JOIN Sections s ON a.SectionID = s.SectionID
+ORDER BY i.IssueDate DESC;
+
+-- 2. Все рубрики с количеством статей (LEFT JOIN)
+SELECT s.SectionName, COUNT(a.ArticleID) AS ArticleCount
+FROM Sections s
+LEFT JOIN Articles a ON s.SectionID = a.SectionID
+GROUP BY s.SectionID, s.SectionName;
