@@ -1,0 +1,108 @@
+-- Создание таблиц
+
+CREATE TABLE Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    UserName NVARCHAR(100) NOT NULL UNIQUE,
+    FirstName NVARCHAR(50),
+    LastName NVARCHAR(50),
+    Email NVARCHAR(100) UNIQUE,
+    RegistrationDate DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Posts (
+    PostID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT NOT NULL,
+    Content NVARCHAR(MAX),
+    PostDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
+
+CREATE TABLE Comments (
+    CommentID INT IDENTITY(1,1) PRIMARY KEY,
+    PostID INT NOT NULL,
+    UserID INT NOT NULL,
+    CommentText NVARCHAR(MAX),
+    CommentDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (PostID) REFERENCES Posts(PostID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
+
+CREATE TABLE Likes (
+    LikeID INT IDENTITY(1,1) PRIMARY KEY,
+    PostID INT NOT NULL,
+    UserID INT NOT NULL,
+    LikeDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (PostID) REFERENCES Posts(PostID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
+
+CREATE TABLE Friends (
+    UserID INT NOT NULL,
+    FriendUserID INT NOT NULL,
+    FriendshipDate DATETIME DEFAULT GETDATE(),
+    PRIMARY KEY (UserID, FriendUserID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    FOREIGN KEY (FriendUserID) REFERENCES Users(UserID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Users (UserName, FirstName, LastName, Email) VALUES
+('ivan123', 'Иван', 'Иванов', 'ivan.ivanov@mail.com'),
+('maria321', 'Мария', 'Петрова', 'maria.petrova@mail.com'),
+('sergey55', 'Сергей', 'Сидоров', 'sergey.sidorov@mail.com');
+
+INSERT INTO Posts (UserID, Content, PostDate) VALUES
+(1, 'Привет, это мой первый пост!', '2024-09-01 10:00'),
+(2, 'Сегодня отличный день для прогулки.', '2024-09-02 14:30'),
+(3, 'Люблю программирование!', '2024-09-03 09:15');
+
+INSERT INTO Comments (PostID, UserID, CommentText, CommentDate) VALUES
+(1, 2, 'Добро пожаловать!', '2024-09-01 11:00'),
+(1, 3, 'Поздравляю!', '2024-09-01 12:00'),
+(2, 1, 'Да, правда!', '2024-09-02 15:00');
+
+INSERT INTO Likes (PostID, UserID, LikeDate) VALUES
+(1, 3, '2024-09-01 11:10'),
+(2, 1, '2024-09-02 15:05'),
+(3, 2, '2024-09-03 10:00');
+
+INSERT INTO Friends (UserID, FriendUserID) VALUES
+(1, 2),
+(2, 1),
+(1, 3);
+
+-- Примеры запросов с JOIN
+
+-- 1. Посты с именами пользователей
+SELECT p.PostID, u.UserName, u.FirstName + ' ' + u.LastName AS FullName, p.Content, p.PostDate
+FROM Posts p
+INNER JOIN Users u ON p.UserID = u.UserID
+ORDER BY p.PostDate DESC;
+
+-- 2. Комментарии с информацией о постах и пользователях
+SELECT c.CommentID, p.PostID, u.UserName, c.CommentText, c.CommentDate
+FROM Comments c
+INNER JOIN Posts p ON c.PostID = p.PostID
+INNER JOIN Users u ON c.UserID = u.UserID
+ORDER BY c.CommentDate;
+
+-- 3. Лайки с постами и пользователями
+SELECT l.LikeID, p.PostID, u.UserName, l.LikeDate
+FROM Likes l
+INNER JOIN Posts p ON l.PostID = p.PostID
+INNER JOIN Users u ON l.UserID = u.UserID
+ORDER BY l.LikeDate DESC;
+
+-- 4. Друзья пользователя (двунаправленные связи)
+SELECT u.UserName, f.FriendUserID, fu.UserName AS FriendUserName, f.FriendshipDate
+FROM Friends f
+INNER JOIN Users u ON f.UserID = u.UserID
+INNER JOIN Users fu ON f.FriendUserID = fu.UserID
+WHERE u.UserID = 1;
+
+-- 5. Пользователи и количество постов (LEFT JOIN)
+SELECT u.UserName, COUNT(p.PostID) AS PostsCount
+FROM Users u
+LEFT JOIN Posts p ON u.UserID = p.UserID
+GROUP BY u.UserID, u.UserName;
