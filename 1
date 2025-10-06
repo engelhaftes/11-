@@ -1,0 +1,106 @@
+-- Создание таблиц
+
+CREATE TABLE Genres (
+    GenreID INT IDENTITY(1,1) PRIMARY KEY,
+    GenreName NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(500)
+);
+
+CREATE TABLE Authors (
+    AuthorID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    BirthYear INT NULL
+);
+
+CREATE TABLE Books (
+    BookID INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(200) NOT NULL,
+    GenreID INT,
+    AuthorID INT,
+    PublishYear INT,
+    CopiesAvailable INT DEFAULT 0,
+    Description NVARCHAR(500),
+    FOREIGN KEY (GenreID) REFERENCES Genres(GenreID),
+    FOREIGN KEY (AuthorID) REFERENCES Authors(AuthorID)
+);
+
+CREATE TABLE Readers (
+    ReaderID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Email NVARCHAR(100) UNIQUE NOT NULL,
+    Phone NVARCHAR(20),
+    RegistrationDate DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Loans (
+    LoanID INT IDENTITY(1,1) PRIMARY KEY,
+    ReaderID INT NOT NULL,
+    BookID INT NOT NULL,
+    LoanDate DATETIME DEFAULT GETDATE(),
+    DueDate DATETIME,
+    ReturnDate DATETIME NULL,
+    FOREIGN KEY (ReaderID) REFERENCES Readers(ReaderID),
+    FOREIGN KEY (BookID) REFERENCES Books(BookID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Genres (GenreName, Description) VALUES
+('Фантастика', 'Научно-фантастическая литература'),
+('История', 'Исторические книги и исследования'),
+('Детектив', 'Книги в жанре детектив'),
+('Романы', 'Художественная литература'),
+('Познание', 'Научно-популярная литература');
+
+INSERT INTO Authors (FirstName, LastName, BirthYear) VALUES
+('Айзек', 'Азимов', 1920),
+('Артур', 'Конан Дойл', 1859),
+('Джейн', 'Остин', 1775),
+('Стивен', 'Кинг', 1947),
+('Лев', 'Толстой', 1828);
+
+INSERT INTO Books (Title, GenreID, AuthorID, PublishYear, CopiesAvailable, Description) VALUES
+('Фонд', 1, 1, 1951, 5, 'Классика научной фантастики'),
+('Шерлок Холмс', 3, 2, 1892, 3, 'Детективные рассказы'),
+('Гордость и предубеждение', 4, 3, 1813, 4, 'Роман о любви и обществе'),
+('Оно', 3, 4, 1986, 2, 'Хоррор роман'),
+('Война и мир', 2, 5, 1869, 1, 'Эпический исторический роман');
+
+INSERT INTO Readers (FirstName, LastName, Email, Phone) VALUES
+('Иван', 'Иванов', 'ivan.ivanov@example.com', '+7-901-123-4567'),
+('Марина', 'Петрова', 'marina.petrova@example.com', '+7-923-987-6543'),
+('Сергей', 'Сидоров', 'sergey.sidorov@example.com', '+7-916-555-7890');
+
+INSERT INTO Loans (ReaderID, BookID, LoanDate, DueDate) VALUES
+(1, 1, '2024-09-01', '2024-09-21'),
+(2, 3, '2024-09-05', '2024-09-25'),
+(3, 2, '2024-09-10', '2024-09-30');
+
+-- Примеры запросов с JOIN
+
+-- 1. Книги с жанрами и авторами
+SELECT b.Title, g.GenreName, a.FirstName + ' ' + a.LastName AS Author, b.CopiesAvailable
+FROM Books b
+INNER JOIN Genres g ON b.GenreID = g.GenreID
+INNER JOIN Authors a ON b.AuthorID = a.AuthorID;
+
+-- 2. Выдачи с именами читателей и названиями книг
+SELECT l.LoanID, r.FirstName + ' ' + r.LastName AS Reader, b.Title, l.LoanDate, l.DueDate, l.ReturnDate
+FROM Loans l
+INNER JOIN Readers r ON l.ReaderID = r.ReaderID
+INNER JOIN Books b ON l.BookID = b.BookID;
+
+-- 3. Все жанры и количество книг в каждом (LEFT JOIN)
+SELECT g.GenreName, COUNT(b.BookID) AS BooksCount
+FROM Genres g
+LEFT JOIN Books b ON g.GenreID = b.GenreID
+GROUP BY g.GenreID, g.GenreName;
+
+-- 4. Читатели и их текущие выдачи (LEFT JOIN с чтением без выдач)
+SELECT r.FirstName + ' ' + r.LastName AS Reader, l.LoanID, b.Title, l.LoanDate, l.DueDate
+FROM Readers r
+LEFT JOIN Loans l ON r.ReaderID = l.ReaderID AND l.ReturnDate IS NULL
+LEFT JOIN Books b ON l.BookID = b.BookID
+ORDER BY r.LastName;
