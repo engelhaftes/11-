@@ -1,0 +1,100 @@
+-- Создание таблиц
+
+CREATE TABLE Medicines (
+    MedicineID INT IDENTITY(1,1) PRIMARY KEY,
+    MedicineName NVARCHAR(200) NOT NULL,
+    GroupName NVARCHAR(100),
+    Description NVARCHAR(500),
+    Price DECIMAL(10,2) NOT NULL,
+    QuantityInStock INT DEFAULT 0
+);
+
+CREATE TABLE Doctors (
+    DoctorID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Specialty NVARCHAR(100),
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Clients (
+    ClientID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Email NVARCHAR(100) UNIQUE,
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Prescriptions (
+    PrescriptionID INT IDENTITY(1,1) PRIMARY KEY,
+    ClientID INT NOT NULL,
+    DoctorID INT NOT NULL,
+    PrescriptionDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (ClientID) REFERENCES Clients(ClientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+);
+
+CREATE TABLE Sales (
+    SaleID INT IDENTITY(1,1) PRIMARY KEY,
+    MedicineID INT NOT NULL,
+    PrescriptionID INT NULL,
+    SaleDate DATETIME DEFAULT GETDATE(),
+    Quantity INT NOT NULL,
+    UnitPrice DECIMAL(10,2) NOT NULL,
+    ClientID INT NOT NULL,
+    FOREIGN KEY (MedicineID) REFERENCES Medicines(MedicineID),
+    FOREIGN KEY (PrescriptionID) REFERENCES Prescriptions(PrescriptionID),
+    FOREIGN KEY (ClientID) REFERENCES Clients(ClientID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Medicines (MedicineName, GroupName, Description, Price, QuantityInStock) VALUES
+('Парацетамол', 'Жаропонижающие', 'Обезболивающее и жаропонижающее', 50.00, 100),
+('Амоксициллин', 'Антибиотики', 'Антибактериальное средство', 200.00, 50),
+('Витамин C', 'Витамины', 'Для поддержания иммунитета', 150.00, 30);
+
+INSERT INTO Doctors (FirstName, LastName, Specialty, Phone) VALUES
+('Иван', 'Петров', 'Терапевт', '+7-901-123-4567'),
+('Анна', 'Смирнова', 'Педиатр', '+7-923-987-6543');
+
+INSERT INTO Clients (FirstName, LastName, Email, Phone) VALUES
+('Мария', 'Иванова', 'maria.ivanova@mail.com', '+7-916-555-1234'),
+('Сергей', 'Петров', 'sergey.petrov@mail.com', '+7-905-555-7890');
+
+INSERT INTO Prescriptions (ClientID, DoctorID, PrescriptionDate) VALUES
+(1, 1, '2024-09-01'),
+(2, 2, '2024-09-10');
+
+INSERT INTO Sales (MedicineID, PrescriptionID, SaleDate, Quantity, UnitPrice, ClientID) VALUES
+(1, 1, '2024-09-01', 2, 50.00, 1),
+(2, 2, '2024-09-11', 1, 200.00, 2),
+(3, NULL, '2024-09-15', 1, 150.00, 1);
+
+-- Примеры запросов с JOIN
+
+-- 1. Продажи с лекарствами и клиентами
+SELECT s.SaleID, m.MedicineName, c.FirstName + ' ' + c.LastName AS ClientName, s.Quantity, s.UnitPrice, s.SaleDate
+FROM Sales s
+INNER JOIN Medicines m ON s.MedicineID = m.MedicineID
+INNER JOIN Clients c ON s.ClientID = c.ClientID;
+
+-- 2. Рецепты с информацией о врачах и клиентах
+SELECT pr.PrescriptionID, d.FirstName + ' ' + d.LastName AS DoctorName, 
+       c.FirstName + ' ' + c.LastName AS ClientName, pr.PrescriptionDate
+FROM Prescriptions pr
+INNER JOIN Doctors d ON pr.DoctorID = d.DoctorID
+INNER JOIN Clients c ON pr.ClientID = c.ClientID;
+
+-- 3. Лекарства и общее количество продаж (LEFT JOIN)
+SELECT m.MedicineName, SUM(ISNULL(s.Quantity, 0)) AS TotalSold
+FROM Medicines m
+LEFT JOIN Sales s ON m.MedicineID = s.MedicineID
+GROUP BY m.MedicineID, m.MedicineName;
+
+-- 4. Клиенты и их покупки (LEFT JOIN)
+SELECT c.FirstName + ' ' + c.LastName AS ClientName, s.SaleID, m.MedicineName, s.Quantity, s.SaleDate
+FROM Clients c
+LEFT JOIN Sales s ON c.ClientID = s.ClientID
+LEFT JOIN Medicines m ON s.MedicineID = m.MedicineID
+ORDER BY c.LastName;
