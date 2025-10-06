@@ -1,0 +1,97 @@
+-- Создание таблиц
+
+CREATE TABLE Movies (
+    MovieID INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(200) NOT NULL,
+    Genre NVARCHAR(100),
+    DurationMinutes INT,
+    Description NVARCHAR(500)
+);
+
+CREATE TABLE Halls (
+    HallID INT IDENTITY(1,1) PRIMARY KEY,
+    HallName NVARCHAR(100) NOT NULL,
+    Capacity INT NOT NULL
+);
+
+CREATE TABLE Sessions (
+    SessionID INT IDENTITY(1,1) PRIMARY KEY,
+    MovieID INT NOT NULL,
+    HallID INT NOT NULL,
+    SessionDateTime DATETIME NOT NULL,
+    FOREIGN KEY (MovieID) REFERENCES Movies(MovieID),
+    FOREIGN KEY (HallID) REFERENCES Halls(HallID)
+);
+
+CREATE TABLE Clients (
+    ClientID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Email NVARCHAR(100) UNIQUE,
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Tickets (
+    TicketID INT IDENTITY(1,1) PRIMARY KEY,
+    SessionID INT NOT NULL,
+    ClientID INT NOT NULL,
+    SeatNumber NVARCHAR(10),
+    Price DECIMAL(10,2) NOT NULL,
+    PurchaseDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (SessionID) REFERENCES Sessions(SessionID),
+    FOREIGN KEY (ClientID) REFERENCES Clients(ClientID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Movies (Title, Genre, DurationMinutes, Description) VALUES
+('Матрица', 'Фантастика', 136, 'Фантастический боевик'),
+('Властелин колец', 'Фэнтези', 178, 'Эпическое приключение'),
+('Начало', 'Триллер', 148, 'Фильм о снах и подсознании');
+
+INSERT INTO Halls (HallName, Capacity) VALUES
+('Зал №1', 100),
+('Зал №2', 80);
+
+INSERT INTO Sessions (MovieID, HallID, SessionDateTime) VALUES
+(1, 1, '2024-10-01 19:00'),
+(2, 2, '2024-10-01 20:00'),
+(3, 1, '2024-10-02 18:00');
+
+INSERT INTO Clients (FirstName, LastName, Email, Phone) VALUES
+('Алексей', 'Иванов', 'alexey.ivanov@mail.com', '+7-901-123-4567'),
+('Марина', 'Петрова', 'marina.petrova@mail.com', '+7-923-987-6543');
+
+INSERT INTO Tickets (SessionID, ClientID, SeatNumber, Price) VALUES
+(1, 1, 'A10', 300.00),
+(2, 2, 'B5', 350.00),
+(3, 1, 'A5', 320.00);
+
+-- Примеры запросов с JOIN
+
+-- 1. Сеансы с фильмами и залами
+SELECT s.SessionID, m.Title, m.Genre, s.SessionDateTime, h.HallName, h.Capacity
+FROM Sessions s
+INNER JOIN Movies m ON s.MovieID = m.MovieID
+INNER JOIN Halls h ON s.HallID = h.HallID;
+
+-- 2. Проданные билеты с информацией о клиентах и сеансах
+SELECT t.TicketID, c.FirstName + ' ' + c.LastName AS ClientName, m.Title, s.SessionDateTime, t.SeatNumber, t.Price
+FROM Tickets t
+INNER JOIN Clients c ON t.ClientID = c.ClientID
+INNER JOIN Sessions s ON t.SessionID = s.SessionID
+INNER JOIN Movies m ON s.MovieID = m.MovieID;
+
+-- 3. Все залы и количество сеансов (LEFT JOIN)
+SELECT h.HallName, COUNT(s.SessionID) AS SessionsCount
+FROM Halls h
+LEFT JOIN Sessions s ON h.HallID = s.HallID
+GROUP BY h.HallID, h.HallName;
+
+-- 4. Клиенты и их билеты (LEFT JOIN)
+SELECT c.FirstName + ' ' + c.LastName AS ClientName, t.TicketID, m.Title, s.SessionDateTime
+FROM Clients c
+LEFT JOIN Tickets t ON c.ClientID = t.ClientID
+LEFT JOIN Sessions s ON t.SessionID = s.SessionID
+LEFT JOIN Movies m ON s.MovieID = m.MovieID
+ORDER BY c.LastName;
