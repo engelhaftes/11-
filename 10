@@ -1,0 +1,94 @@
+-- Создание таблиц
+
+CREATE TABLE Sellers (
+    SellerID INT IDENTITY(1,1) PRIMARY KEY,
+    UserName NVARCHAR(100) NOT NULL UNIQUE,
+    ContactEmail NVARCHAR(100),
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    UserName NVARCHAR(100) NOT NULL UNIQUE,
+    Email NVARCHAR(100),
+    RegisteredAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Categories (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE Lots (
+    LotID INT IDENTITY(1,1) PRIMARY KEY,
+    SellerID INT NOT NULL,
+    CategoryID INT NOT NULL,
+    Title NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(1000),
+    StartingPrice DECIMAL(10,2),
+    StartDate DATETIME,
+    EndDate DATETIME,
+    FOREIGN KEY (SellerID) REFERENCES Sellers(SellerID),
+    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
+);
+
+CREATE TABLE Bids (
+    BidID INT IDENTITY(1,1) PRIMARY KEY,
+    LotID INT NOT NULL,
+    UserID INT NOT NULL,
+    BidAmount DECIMAL(10,2) NOT NULL,
+    BidDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (LotID) REFERENCES Lots(LotID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Sellers (UserName, ContactEmail, Phone) VALUES
+('seller123', 'seller123@mail.com', '+7-901-111-2222'),
+('best_seller', 'best@mail.com', '+7-923-333-4444');
+
+INSERT INTO Users (UserName, Email) VALUES
+('buyer001', 'buyer001@mail.com'),
+('auction_fan', 'fan@mail.com');
+
+INSERT INTO Categories (CategoryName) VALUES
+('Электроника'),
+('Коллекционные предметы');
+
+INSERT INTO Lots (SellerID, CategoryID, Title, Description, StartingPrice, StartDate, EndDate) VALUES
+(1, 1, 'Смартфон iPhone 14', 'Отличное состояние', 50000.00, '2024-10-01', '2024-10-10'),
+(2, 2, 'Редкая монета', 'Антикварная монета', 15000.00, '2024-10-05', '2024-10-15');
+
+INSERT INTO Bids (LotID, UserID, BidAmount, BidDate) VALUES
+(1, 1, 52000.00, '2024-10-02'),
+(1, 2, 53000.00, '2024-10-03'),
+(2, 1, 16000.00, '2024-10-06');
+
+-- Примеры запросов с JOIN
+
+-- 1. Лоты с продавцами и категориями
+SELECT l.LotID, l.Title, s.UserName AS SellerName, c.CategoryName, l.StartingPrice, l.StartDate, l.EndDate
+FROM Lots l
+INNER JOIN Sellers s ON l.SellerID = s.SellerID
+INNER JOIN Categories c ON l.CategoryID = c.CategoryID
+ORDER BY l.StartDate DESC;
+
+-- 2. Ставки с пользователями и лотами
+SELECT b.BidID, u.UserName AS Bidder, l.Title, b.BidAmount, b.BidDate
+FROM Bids b
+INNER JOIN Users u ON b.UserID = u.UserID
+INNER JOIN Lots l ON b.LotID = l.LotID
+ORDER BY b.BidDate DESC;
+
+-- 3. Категории и количество лотов (LEFT JOIN)
+SELECT c.CategoryName, COUNT(l.LotID) AS LotsCount
+FROM Categories c
+LEFT JOIN Lots l ON c.CategoryID = l.CategoryID
+GROUP BY c.CategoryID, c.CategoryName;
+
+-- 4. Продавцы и количество выставленных лотов
+SELECT s.UserName, COUNT(l.LotID) AS LotsCount
+FROM Sellers s
+LEFT JOIN Lots l ON s.SellerID = l.SellerID
+GROUP BY s.SellerID, s.UserName;
