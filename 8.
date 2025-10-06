@@ -1,1 +1,96 @@
+-- Создание таблиц
 
+CREATE TABLE Accounts (
+    AccountID INT IDENTITY(1,1) PRIMARY KEY,
+    AccountNumber NVARCHAR(50) NOT NULL UNIQUE,
+    AccountName NVARCHAR(200) NOT NULL,
+    AccountType NVARCHAR(50)
+);
+
+CREATE TABLE Contractors (
+    ContractorID INT IDENTITY(1,1) PRIMARY KEY,
+    ContractorName NVARCHAR(200) NOT NULL,
+    Address NVARCHAR(300),
+    Phone NVARCHAR(20),
+    Email NVARCHAR(100)
+);
+
+CREATE TABLE Employees (
+    EmployeeID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Position NVARCHAR(100),
+    Phone NVARCHAR(20),
+    Email NVARCHAR(100)
+);
+
+CREATE TABLE Documents (
+    DocumentID INT IDENTITY(1,1) PRIMARY KEY,
+    DocumentNumber NVARCHAR(100) NOT NULL,
+    DocumentDate DATETIME NOT NULL,
+    ContractorID INT,
+    EmployeeID INT,
+    Description NVARCHAR(500),
+    FOREIGN KEY (ContractorID) REFERENCES Contractors(ContractorID),
+    FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
+);
+
+CREATE TABLE Entries (
+    EntryID INT IDENTITY(1,1) PRIMARY KEY,
+    DocumentID INT NOT NULL,
+    AccountID INT NOT NULL,
+    Debit DECIMAL(18,2) DEFAULT 0,
+    Credit DECIMAL(18,2) DEFAULT 0,
+    EntryDate DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID),
+    FOREIGN KEY (AccountID) REFERENCES Accounts(AccountID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Accounts (AccountNumber, AccountName, AccountType) VALUES
+('101', 'Основные средства', 'Актив'),
+('302', 'Расчеты с поставщиками', 'Пассив');
+
+INSERT INTO Contractors (ContractorName, Address, Phone, Email) VALUES
+('ООО Ромашка', 'г. Москва, ул. Ленина, д.1', '+7-901-123-4567', 'romashka@mail.com');
+
+INSERT INTO Employees (FirstName, LastName, Position, Phone, Email) VALUES
+('Ирина', 'Кузнецова', 'Главный бухгалтер', '+7-923-987-6543', 'irina.kuznetsova@mail.com');
+
+INSERT INTO Documents (DocumentNumber, DocumentDate, ContractorID, EmployeeID, Description) VALUES
+('Счет №1', '2024-09-01', 1, 1, 'Оплата за оборудование');
+
+INSERT INTO Entries (DocumentID, AccountID, Debit, Credit, EntryDate) VALUES
+(1, 1, 100000.00, 0, '2024-09-02'),
+(1, 2, 0, 100000.00, '2024-09-02');
+
+-- Примеры запросов с JOIN
+
+-- 1. Документы с контрагентами и сотрудниками
+SELECT d.DocumentNumber, d.DocumentDate, c.ContractorName, e.FirstName + ' ' + e.LastName AS EmployeeName, d.Description
+FROM Documents d
+LEFT JOIN Contractors c ON d.ContractorID = c.ContractorID
+LEFT JOIN Employees e ON d.EmployeeID = e.EmployeeID
+ORDER BY d.DocumentDate DESC;
+
+-- 2. Проводки по документам с информацией по счетам
+SELECT en.EntryID, d.DocumentNumber, a.AccountNumber, a.AccountName, en.Debit, en.Credit, en.EntryDate
+FROM Entries en
+INNER JOIN Documents d ON en.DocumentID = d.DocumentID
+INNER JOIN Accounts a ON en.AccountID = a.AccountID
+ORDER BY en.EntryDate;
+
+-- 3. Счета и сумма дебетов и кредитов (агрегация)
+SELECT a.AccountNumber, a.AccountName, 
+       SUM(en.Debit) AS TotalDebit, 
+       SUM(en.Credit) AS TotalCredit
+FROM Accounts a
+LEFT JOIN Entries en ON a.AccountID = en.AccountID
+GROUP BY a.AccountID, a.AccountNumber, a.AccountName;
+
+-- 4. Контрагенты и количество документов (LEFT JOIN)
+SELECT c.ContractorName, COUNT(d.DocumentID) AS DocumentsCount
+FROM Contractors c
+LEFT JOIN Documents d ON c.ContractorID = d.ContractorID
+GROUP BY c.ContractorID, c.ContractorName;
