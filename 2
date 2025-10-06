@@ -1,0 +1,128 @@
+-- Создание таблиц
+
+CREATE TABLE Departments (
+    DepartmentID INT IDENTITY(1,1) PRIMARY KEY,
+    DepartmentName NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(500)
+);
+
+CREATE TABLE Doctors (
+    DoctorID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Specialty NVARCHAR(100),
+    DepartmentID INT,
+    Phone NVARCHAR(20),
+    Email NVARCHAR(100),
+    FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID)
+);
+
+CREATE TABLE Patients (
+    PatientID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    DateOfBirth DATE,
+    Gender NVARCHAR(10),
+    Phone NVARCHAR(20),
+    Address NVARCHAR(200),
+    RegistrationDate DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Diagnoses (
+    DiagnosisID INT IDENTITY(1,1) PRIMARY KEY,
+    PatientID INT NOT NULL,
+    DoctorID INT NOT NULL,
+    DiagnosisDate DATETIME DEFAULT GETDATE(),
+    DiagnosisDescription NVARCHAR(1000),
+    FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+);
+
+CREATE TABLE Appointments (
+    AppointmentID INT IDENTITY(1,1) PRIMARY KEY,
+    PatientID INT NOT NULL,
+    DoctorID INT NOT NULL,
+    AppointmentDate DATETIME NOT NULL,
+    Status NVARCHAR(50) DEFAULT 'Scheduled',
+    FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+);
+
+CREATE TABLE Prescriptions (
+    PrescriptionID INT IDENTITY(1,1) PRIMARY KEY,
+    DiagnosisID INT NOT NULL,
+    MedicineName NVARCHAR(200),
+    Dosage NVARCHAR(100),
+    Duration NVARCHAR(100),
+    FOREIGN KEY (DiagnosisID) REFERENCES Diagnoses(DiagnosisID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Departments (DepartmentName, Description) VALUES
+('Терапия', 'Терапевтическое отделение'),
+('Хирургия', 'Отделение хирургии'),
+('Кардиология', 'Кардиологическое отделение');
+
+INSERT INTO Doctors (FirstName, LastName, Specialty, DepartmentID, Phone, Email) VALUES
+('Иван', 'Петров', 'Терапевт', 1, '+7-901-123-4567', 'ivan.petrov@hospital.ru'),
+('Анна', 'Сидорова', 'Хирург', 2, '+7-923-987-6543', 'anna.sidorova@hospital.ru'),
+('Петр', 'Иванов', 'Кардиолог', 3, '+7-916-555-7890', 'petr.ivanov@hospital.ru');
+
+INSERT INTO Patients (FirstName, LastName, DateOfBirth, Gender, Phone, Address) VALUES
+('Мария', 'Кузнецова', '1980-05-12', 'Ж', '+7-901-234-5678', 'г. Москва, ул. Ленина, д. 10'),
+('Алексей', 'Смирнов', '1975-03-20', 'М', '+7-921-345-6789', 'г. СПб, ул. Пушкина, д. 5'),
+('Елена', 'Васильева', '1990-11-01', 'Ж', '+7-916-555-0123', 'г. Екатеринбург, ул. Мира, д. 7');
+
+INSERT INTO Diagnoses (PatientID, DoctorID, DiagnosisDescription, DiagnosisDate) VALUES
+(1, 1, 'Грипп', '2024-09-01'),
+(2, 3, 'Гипертония', '2024-09-05'),
+(3, 2, 'Аппендицит', '2024-09-10');
+
+INSERT INTO Appointments (PatientID, DoctorID, AppointmentDate, Status) VALUES
+(1, 1, '2024-09-15 09:00', 'Completed'),
+(2, 3, '2024-09-16 10:30', 'Scheduled'),
+(3, 2, '2024-09-17 11:00', 'Scheduled');
+
+INSERT INTO Prescriptions (DiagnosisID, MedicineName, Dosage, Duration) VALUES
+(1, 'Парацетамол', '500 мг, 3 раза в день', '5 дней'),
+(2, 'Лозартан', '50 мг, 1 раз в день', '30 дней'),
+(3, 'Анальгин', '500 мг, при болях', '3 дня');
+
+-- Примеры запросов с JOIN
+
+-- 1. Доктора с отделениями
+SELECT d.FirstName + ' ' + d.LastName AS DoctorName, d.Specialty, dept.DepartmentName
+FROM Doctors d
+INNER JOIN Departments dept ON d.DepartmentID = dept.DepartmentID;
+
+-- 2. Пациенты с диагнозами и лечащими врачами
+SELECT p.FirstName + ' ' + p.LastName AS PatientName, diag.DiagnosisDescription, diag.DiagnosisDate,
+       doc.FirstName + ' ' + doc.LastName AS DoctorName
+FROM Diagnoses diag
+INNER JOIN Patients p ON diag.PatientID = p.PatientID
+INNER JOIN Doctors doc ON diag.DoctorID = doc.DoctorID;
+
+-- 3. Записи о приемах пациентов с информацией о докторе
+SELECT a.AppointmentID, p.FirstName + ' ' + p.LastName AS PatientName, 
+       d.FirstName + ' ' + d.LastName AS DoctorName, a.AppointmentDate, a.Status
+FROM Appointments a
+INNER JOIN Patients p ON a.PatientID = p.PatientID
+INNER JOIN Doctors d ON a.DoctorID = d.DoctorID;
+
+-- 4. Все отделения и количество докторов в каждом (LEFT JOIN)
+SELECT dept.DepartmentName, COUNT(d.DoctorID) AS DoctorsCount
+FROM Departments dept
+LEFT JOIN Doctors d ON dept.DepartmentID = d.DepartmentID
+GROUP BY dept.DepartmentID, dept.DepartmentName;
+
+-- 5. Пациенты и их назначенные диагнозы с лекарствами (множество JOIN)
+SELECT p.FirstName + ' ' + p.LastName AS PatientName,
+       d.FirstName + ' ' + d.LastName AS DoctorName,
+       diag.DiagnosisDescription,
+       pres.MedicineName, pres.Dosage, pres.Duration
+FROM Diagnoses diag
+INNER JOIN Patients p ON diag.PatientID = p.PatientID
+INNER JOIN Doctors d ON diag.DoctorID = d.DoctorID
+LEFT JOIN Prescriptions pres ON diag.DiagnosisID = pres.DiagnosisID
+ORDER BY p.LastName;
