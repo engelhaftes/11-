@@ -1,0 +1,91 @@
+-- Создание таблиц
+
+CREATE TABLE Halls (
+    HallID INT IDENTITY(1,1) PRIMARY KEY,
+    HallName NVARCHAR(100) NOT NULL,
+    Location NVARCHAR(200)
+);
+
+CREATE TABLE Exhibits (
+    ExhibitID INT IDENTITY(1,1) PRIMARY KEY,
+    ExhibitName NVARCHAR(200) NOT NULL,
+    HallID INT,
+    Author NVARCHAR(150),
+    YearCreated INT,
+    Description NVARCHAR(500),
+    Condition NVARCHAR(100),
+    FOREIGN KEY (HallID) REFERENCES Halls(HallID)
+);
+
+CREATE TABLE Exhibitions (
+    ExhibitionID INT IDENTITY(1,1) PRIMARY KEY,
+    ExhibitionName NVARCHAR(200) NOT NULL,
+    StartDate DATETIME,
+    EndDate DATETIME
+);
+
+CREATE TABLE Visitors (
+    VisitorID INT IDENTITY(1,1) PRIMARY KEY,
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Email NVARCHAR(100) UNIQUE,
+    Phone NVARCHAR(20)
+);
+
+CREATE TABLE Tickets (
+    TicketID INT IDENTITY(1,1) PRIMARY KEY,
+    VisitorID INT NOT NULL,
+    ExhibitionID INT NOT NULL,
+    PurchaseDate DATETIME DEFAULT GETDATE(),
+    Price DECIMAL(10,2),
+    FOREIGN KEY (VisitorID) REFERENCES Visitors(VisitorID),
+    FOREIGN KEY (ExhibitionID) REFERENCES Exhibitions(ExhibitionID)
+);
+
+-- Заполнение тестовыми данными
+
+INSERT INTO Halls (HallName, Location) VALUES
+('Зал древности', '1-й этаж'),
+('Зал современного искусства', '2-й этаж');
+
+INSERT INTO Exhibits (ExhibitName, HallID, Author, YearCreated, Description, Condition) VALUES
+('Ваза Древней Греции', 1, 'Неизвестен', -500, 'Древняя керамическая ваза', 'Хорошее'),
+('Картина "Звездная ночь"', 2, 'Винсент ван Гог', 1889, 'Известная картина постимпрессионизма', 'Отличное');
+
+INSERT INTO Exhibitions (ExhibitionName, StartDate, EndDate) VALUES
+('Античность и современность', '2024-10-01', '2025-01-30'),
+('Шедевры живописи', '2024-11-15', '2025-03-01');
+
+INSERT INTO Visitors (FirstName, LastName, Email, Phone) VALUES
+('Екатерина', 'Иванова', 'ekaterina.ivanova@mail.com', '+7-901-234-5678'),
+('Андрей', 'Петров', 'andrey.petrov@mail.com', '+7-923-987-6543');
+
+INSERT INTO Tickets (VisitorID, ExhibitionID, Price) VALUES
+(1, 1, 500.00),
+(2, 2, 700.00);
+
+-- Примеры запросов с JOIN
+
+-- 1. Экспонаты с залами
+SELECT e.ExhibitName, h.HallName, e.Author, e.YearCreated, e.Condition
+FROM Exhibits e
+INNER JOIN Halls h ON e.HallID = h.HallID;
+
+-- 2. Билеты с посетителями и выставками
+SELECT t.TicketID, v.FirstName + ' ' + v.LastName AS VisitorName, ex.ExhibitionName, t.PurchaseDate, t.Price
+FROM Tickets t
+INNER JOIN Visitors v ON t.VisitorID = v.VisitorID
+INNER JOIN Exhibitions ex ON t.ExhibitionID = ex.ExhibitionID;
+
+-- 3. Выставки и количество посетителей (LEFT JOIN)
+SELECT ex.ExhibitionName, COUNT(t.TicketID) AS VisitorsCount
+FROM Exhibitions ex
+LEFT JOIN Tickets t ON ex.ExhibitionID = t.ExhibitionID
+GROUP BY ex.ExhibitionID, ex.ExhibitionName;
+
+-- 4. Посетители и их билеты (LEFT JOIN)
+SELECT v.FirstName + ' ' + v.LastName AS VisitorName, t.TicketID, ex.ExhibitionName, t.PurchaseDate
+FROM Visitors v
+LEFT JOIN Tickets t ON v.VisitorID = t.VisitorID
+LEFT JOIN Exhibitions ex ON t.ExhibitionID = ex.ExhibitionID
+ORDER BY v.LastName;
